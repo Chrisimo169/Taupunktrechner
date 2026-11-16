@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-I9SwN8S0gvE4oM4Q4mDOO3yNSqQbIZD5NliJ6m5Uo90=' 'sha256-GaofndyYbSCbQxju/CfMUU3iFyVgOCnAwGmpnwmyWZ0='; style-src 'sha256-4qc/kHGZNpaE7p6v8U1fXQW7weYh8EQzAMU2Ihwykck='; img-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#ECF0F1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0A1B21" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Taupunktrechner</title>
+<style>
+:root{
+  /* Layout: Eine dunkle Fensterscheibe trägt Ergebnis und Diagramm. Darunter stehen die zwei
+     Eingaben und drei Kennwerte als ruhige Zeilen. Linksbündig, eine Spalte am Handy, zwei ab 820px. */
+  --page:#ECF0F1;
+  --surface:#FFFFFF;
+  --ink:#0F252C;
+  --ink-soft:#516A73;
+  --line:#C9D5D9;
+  --accent:#0A78A3;
+  --warn:#8A5800;
+  --crit:#B3261E;
+
+  /* Die Scheibe bleibt in beiden Themen dunkel: draußen ist es kalt. */
+  --pane:#0E3A4A;
+  --pane-ink:#EAF6F8;
+  --pane-soft:#A9CAD2;
+  --dew:#7DD6F5;
+  --pane-warn:#F4BC55;
+
+  --font-display:"Roboto Condensed","sans-serif-condensed","Arial Narrow",sans-serif;
+  --font-body:"Roboto","Segoe UI",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --page:#0A1B21;
+    --surface:#12303A;
+    --ink:#E4EEF0;
+    --ink-soft:#93ADB5;
+    --line:#27444E;
+    --accent:#62C6EC;
+    --warn:#F0B94B;
+    --crit:#FF8D7E;
+    --pane:#103C4C;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#0A1B21;
+  --surface:#12303A;
+  --ink:#E4EEF0;
+  --ink-soft:#93ADB5;
+  --line:#27444E;
+  --accent:#62C6EC;
+  --warn:#F0B94B;
+  --crit:#FF8D7E;
+  --pane:#103C4C;
+  color-scheme:dark;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--page);
+  color:var(--ink);
+  font-family:var(--font-body);
+  font-size:16px;
+  line-height:1.45;
+  -webkit-tap-highlight-color:transparent;
+}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+.app{
+  max-width:460px;
+  margin:0 auto;
+  padding:16px 16px 40px;
+  display:grid;
+  gap:26px;
+}
+.side{display:grid;gap:26px;min-width:0}
+
+/* ---------- Scheibe: Ergebnis und Diagramm ---------- */
+.pane{
+  position:relative;
+  height:clamp(292px,84vw,330px);
+  background:var(--pane);
+  color:var(--pane-ink);
+  border-radius:22px;
+  overflow:hidden;
+}
+.pane svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.readout{position:absolute;left:18px;top:14px;pointer-events:none}
+.readout h1{
+  margin:0;
+  font-size:15px;
+  font-weight:500;
+  line-height:1.2;
+  color:var(--pane-soft);
+}
+.value{
+  margin:2px 0 0;
+  display:flex;
+  align-items:baseline;
+  font-family:var(--font-display);
+  font-weight:500;
+  font-size:clamp(84px,26vw,108px);
+  line-height:.88;
+  font-variant-numeric:tabular-nums;
+}
+.value .dec{font-size:.56em}
+.value .unit{
+  margin-left:.3em;
+  font-family:var(--font-body);
+  font-size:.24em;
+  color:var(--pane-soft);
+}
+.second{margin:10px 0 0;display:grid;gap:1px}
+.second-label{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  font-size:14px;
+  color:var(--pane-soft);
+}
+.second-value{
+  display:flex;
+  align-items:baseline;
+  font-family:var(--font-display);
+  font-weight:500;
+  font-size:38px;
+  line-height:1;
+  color:var(--pane-warn);
+  font-variant-numeric:tabular-nums;
+}
+.second-value .unit{
+  margin-left:.3em;
+  font-family:var(--font-body);
+  font-size:15px;
+}
+.swatch{flex:none;width:16px;border-top:2px dashed var(--pane-warn)}
+
+.grid{stroke:var(--pane-ink);stroke-opacity:.07}
+.grid.major{stroke-opacity:.15}
+.axis{stroke:var(--pane-ink);stroke-opacity:.4}
+.tick{fill:var(--pane-soft);font:500 11.5px var(--font-body)}
+.fog{fill:var(--dew);fill-opacity:.07}
+.drops{fill:none;stroke:url(#drops);stroke-width:52}
+#drops circle{fill:var(--dew);fill-opacity:.5}
+.sat{fill:none;stroke:var(--pane-ink);stroke-width:1.75;stroke-linecap:round}
+.c80{fill:none;stroke:var(--pane-warn);stroke-width:1.5;stroke-dasharray:5 5}
+.on-pane{
+  font:600 11.5px var(--font-body);
+  paint-order:stroke;
+  stroke:var(--pane);
+  stroke-width:4px;
+  stroke-linejoin:round;
+}
+.on-pane.sat-label{fill:var(--pane-ink)}
+.on-pane.c80-label{fill:var(--pane-warn)}
+#label-room{fill:var(--pane-ink);font-size:12px}
+#track{fill:none;stroke:var(--dew);stroke-width:2.25;stroke-linecap:round}
+#drop-room{stroke:var(--pane-ink);stroke-opacity:.4;stroke-dasharray:2 4}
+#drop-dew{stroke:var(--dew);stroke-dasharray:2 4}
+#drop-80{stroke:var(--pane-warn);stroke-dasharray:2 4}
+#dot-room{fill:var(--pane-ink)}
+#dot-dew{fill:var(--pane);stroke:var(--dew);stroke-width:2.5}
+#mark-80{fill:var(--pane-warn);stroke:var(--pane);stroke-width:2}
+
+@media (prefers-reduced-motion:no-preference){
+  .intro #track{stroke-dasharray:1;stroke-dashoffset:1;animation:draw .7s .25s cubic-bezier(.3,.7,.2,1) forwards}
+  .intro #dot-dew,.intro #drop-dew,.intro #mark-80,.intro #drop-80{opacity:0;animation:appear .3s .85s ease-out forwards}
+}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes appear{to{opacity:1}}
+
+/* ---------- Eingaben ---------- */
+.controls{display:grid;gap:20px}
+.control{display:grid;gap:4px}
+.control-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.control-head label{font-weight:500}
+.field{
+  display:inline-flex;
+  align-items:baseline;
+  gap:5px;
+  padding:0 2px 1px;
+  border-bottom:2px solid var(--line);
+  border-radius:2px;
+}
+.field:focus-within{border-color:var(--accent)}
+.field:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:4px}
+.field input{
+  width:2em;
+  padding:0;
+  border:0;
+  outline:0;
+  background:transparent;
+  color:var(--ink);
+  font-family:var(--font-display);
+  font-weight:500;
+  font-size:38px;
+  line-height:1.05;
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+#rh{width:1.7em}
+.field .unit{font-size:15px;color:var(--ink-soft)}
+.control-slide{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:10px;align-items:center}
+.step{
+  width:44px;
+  height:44px;
+  display:grid;
+  place-items:center;
+  padding:0;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--surface);
+  color:var(--ink);
+  font:500 24px/1 var(--font-body);
+  cursor:pointer;
+  touch-action:manipulation;
+  user-select:none;
+  -webkit-user-select:none;
+}
+.step:active{background:var(--line)}
+.step:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hint{margin:2px 0 0;font-size:14px;color:var(--crit)}
+
+input[type=range]{
+  -webkit-appearance:none;
+  appearance:none;
+  width:100%;
+  height:44px;
+  margin:0;
+  background:transparent;
+  cursor:pointer;
+  --f:.5;
+  --fill:var(--ink);
+}
+#rh-range{--fill:var(--accent)}
+input[type=range]::-webkit-slider-runnable-track{
+  height:6px;
+  border-radius:3px;
+  background:linear-gradient(to right,var(--fill) calc(14px + (100% - 28px) * var(--f)),var(--line) 0);
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:28px;
+  height:28px;
+  margin-top:-11px;
+  border:2px solid var(--fill);
+  border-radius:50%;
+  background:var(--surface);
+  box-shadow:0 1px 4px rgb(0 0 0 / .22);
+}
+input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:var(--line)}
+input[type=range]::-moz-range-progress{height:6px;border-radius:3px;background:var(--fill)}
+input[type=range]::-moz-range-thumb{
+  width:24px;
+  height:24px;
+  border:2px solid var(--fill);
+  border-radius:50%;
+  background:var(--surface);
+  box-shadow:0 1px 4px rgb(0 0 0 / .22);
+}
+input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+
+/* ---------- Kennwerte ---------- */
+.facts{margin:0}
+.fact{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:16px;
+  min-height:56px;
+  padding:10px 0;
+  border-top:1px solid var(--line);
+}
+.fact:last-child{border-bottom:1px solid var(--line)}
+.fact dt{font-size:15px;color:var(--ink-soft)}
+.fact dd{
+  margin:0;
+  white-space:nowrap;
+  font-family:var(--font-display);
+  font-weight:500;
+  font-size:28px;
+  line-height:1;
+  font-variant-numeric:tabular-nums;
+}
+.fact dd .unit{margin-left:.3em;font-family:var(--font-body);font-size:14px;font-weight:400;color:var(--ink-soft)}
+.pill{
+  display:inline-block;
+  padding:8px 12px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  font-family:var(--font-body);
+  font-size:14px;
+  font-weight:600;
+  line-height:1;
+  color:var(--ink);
+}
+.pill[data-state="damp"]{border-color:transparent;background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
+.pill[data-state="wet"]{border-color:transparent;background:color-mix(in srgb,var(--crit) 14%,transparent);color:var(--crit)}
+
+/* ---------- Installieren ---------- */
+.install{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px 16px;
+  padding:12px 12px 12px 16px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:var(--surface);
+}
+.install[hidden]{display:none}
+.install p{margin:0;font-size:15px}
+.install button{
+  min-height:44px;
+  padding:0 18px;
+  border:0;
+  border-radius:12px;
+  background:var(--ink);
+  color:var(--page);
+  font:600 15px/1 var(--font-body);
+  cursor:pointer;
+}
+.install button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (min-width:820px){.install{grid-column:1 / -1}}
+
+/* ---------- Erklärung ---------- */
+.explain{display:grid;gap:8px;max-width:62ch}
+.explain h2{margin:0;font-size:17px;font-weight:600;text-wrap:balance}
+.explain p{margin:0;font-size:15.5px;color:var(--ink-soft)}
+.explain .note{font-size:13.5px}
+
+@media (min-width:820px){
+  .app{
+    max-width:960px;
+    grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);
+    column-gap:44px;
+    row-gap:36px;
+    align-items:start;
+    padding-top:44px;
+  }
+  .pane{height:380px}
+  .explain{grid-column:1 / -1}
+}
+</style>
+</head>
+<body>
+<main class="app">
+
+  <div class="install" id="install" hidden>
+    <p>Als App läuft der Rechner auch ohne Internet.</p>
+    <button type="button" id="install-button">App installieren</button>
+  </div>
+
+  <section class="pane intro" id="pane" aria-label="Ergebnis">
+    <svg id="chart" role="img" aria-label="Diagramm zum Taupunkt">
+      <defs>
+        <pattern id="drops" width="9" height="9" patternUnits="userSpaceOnUse">
+          <circle cx="2" cy="2.5" r="1.1"></circle>
+          <circle cx="6.5" cy="7" r=".8"></circle>
+        </pattern>
+        <clipPath id="fog-clip"><path id="fog-clip-path" d=""></path></clipPath>
+      </defs>
+      <g id="static"></g>
+      <g id="live">
+        <line id="drop-room"></line>
+        <line id="drop-80"></line>
+        <line id="drop-dew"></line>
+        <path id="track" pathLength="1" d=""></path>
+        <circle id="mark-80" r="4"></circle>
+        <circle id="dot-dew" r="6"></circle>
+        <circle id="dot-room" r="5.5"></circle>
+        <text id="label-room" class="on-pane">Raumluft</text>
+      </g>
+    </svg>
+
+    <div class="readout">
+      <h1>Taupunkt</h1>
+      <p class="value" aria-hidden="true"><span id="dew-int">9</span><span class="dec" id="dew-dec">,3</span><span class="unit">°C</span></p>
+      <div class="second">
+        <span class="second-label"><span class="swatch" aria-hidden="true"></span>80 % Luftfeuchte bei</span>
+        <span class="second-value" aria-hidden="true"><span id="t80">12,6</span><span class="unit">°C</span></span>
+      </div>
+    </div>
+    <p class="sr-only" role="status" id="spoken"></p>
+  </section>
+
+  <div class="side">
+    <section class="controls" aria-label="Eingaben">
+      <div class="control">
+        <div class="control-head">
+          <label for="temp">Raumtemperatur</label>
+          <span class="field"><input id="temp" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" value="20,0" aria-describedby="temp-hint"><span class="unit">°C</span></span>
+        </div>
+        <div class="control-slide">
+          <button class="step" type="button" id="temp-minus" aria-label="0,1 Grad kälter">−</button>
+          <input type="range" id="temp-range" min="0" max="35" step="0.5" value="20" aria-label="Raumtemperatur einstellen">
+          <button class="step" type="button" id="temp-plus" aria-label="0,1 Grad wärmer">+</button>
+        </div>
+        <p class="hint" id="temp-hint" role="alert" hidden></p>
+      </div>
+
+      <div class="control">
+        <div class="control-head">
+          <label for="rh">Relative Luftfeuchte</label>
+          <span class="field"><input id="rh" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" value="50" aria-describedby="rh-hint"><span class="unit">%</span></span>
+        </div>
+        <div class="control-slide">
+          <button class="step" type="button" id="rh-minus" aria-label="1 Prozent weniger">−</button>
+          <input type="range" id="rh-range" min="5" max="100" step="1" value="50" aria-label="Relative Luftfeuchte einstellen">
+          <button class="step" type="button" id="rh-plus" aria-label="1 Prozent mehr">+</button>
+        </div>
+        <p class="hint" id="rh-hint" role="alert" hidden></p>
+      </div>
+    </section>
+
+    <dl class="facts">
+      <div class="fact">
+        <dt>Abstand der Raumluft zum Taupunkt</dt>
+        <dd><span id="gap">10,7</span><span class="unit">Grad</span></dd>
+      </div>
+      <div class="fact">
+        <dt>Wasser je Kubikmeter Luft</dt>
+        <dd><span id="abs">8,6</span><span class="unit">g</span></dd>
+      </div>
+      <div class="fact">
+        <dt>Luftfeuchte im Raum</dt>
+        <dd><span class="pill" id="climate" data-state="ok">im Wohlfühlbereich</span></dd>
+      </div>
+    </dl>
+  </div>
+
+  <section class="explain">
+    <h2>So liest du das Bild</h2>
+    <p>Der helle Punkt ist die Luft im Raum. Nach rechts wird es wärmer, nach oben enthält die Luft mehr Wasser. Kühlt die Luft an einer kalten Wand oder Scheibe ab, wandert sie nach links. Die Wassermenge bleibt gleich, die relative Feuchte steigt.</p>
+    <p>An der gestrichelten Linie sind 80 % erreicht. Ab hier kann an der Fläche Schimmel wachsen. An der durchgezogenen Kurve sind es 100 %. Das ist der Taupunkt, dort setzt sich Wasser ab.</p>
+    <p class="note">Gerechnet mit der Magnus-Formel. Die 80 % sind die Schimmelgrenze nach DIN 4108-2.</p>
+  </section>
+
+</main>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ---------- Physik (Magnus-Formel über Wasser, gültig von -45 bis 60 °C) ---------- */
+  const A = 17.62, B = 243.12, E0 = 6.112;
+  const es = t => E0 * Math.exp(A * t / (B + t));                 // Sättigungsdampfdruck in hPa
+  const tAt = e => { const g = Math.log(e / E0); return B * g / (A - g); }; // Temperatur, bei der e gesättigt ist
+  function compute(t, rh) {
+    const e = es(t) * rh / 100;                                   // Dampfdruck der Raumluft
+    return {
+      e,
+      dew: tAt(e),                                                // 100 % relative Feuchte
+      t80: tAt(e / 0.8),                                          // 80 % relative Feuchte
+      abs: 216.7 * e / (t + 273.15)                               // g Wasser je m³ Luft
+    };
+  }
+
+  /* ---------- Zahlen auf Deutsch ---------- */
+  const nf = d => new Intl.NumberFormat('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const nf1 = nf(1), nf0 = nf(0);
+  function de(x, f = nf1) {
+    const s = f.format(x);
+    return /^-0(,0+)?$/.test(s) ? s.slice(1) : s.replace('-', '−');
+  }
+  function parse(text) {
+    const s = String(text).trim().replace('−', '-').replace(',', '.');
+    return /^-?\d+(\.\d*)?$/.test(s) ? parseFloat(s) : null;
+  }
+
+  /* ---------- Zustand ---------- */
+  const LIMITS = { t: { min: 0, max: 35, digits: 1 }, rh: { min: 5, max: 100, digits: 0 } };
+  const state = { t: 20, rh: 50 };
+  const clamp = (v, key) => Math.min(LIMITS[key].max, Math.max(LIMITS[key].min, v));
+  const round = (v, key) => { const p = Math.pow(10, LIMITS[key].digits); return Math.round(v * p) / p; };
+
+  const $ = id => document.getElementById(id);
+  const ui = {
+    t:  { field: $('temp'), range: $('temp-range'), minus: $('temp-minus'), plus: $('temp-plus'), hint: $('temp-hint'), step: 0.1, unit: '°C' },
+    rh: { field: $('rh'),   range: $('rh-range'),   minus: $('rh-minus'),   plus: $('rh-plus'),   hint: $('rh-hint'),   step: 1,   unit: '%' }
+  };
+  const fmtInput = key => de(state[key], LIMITS[key].digits ? nf1 : nf0);
+
+  function save() {
+    try { localStorage.setItem('taupunktrechner', JSON.stringify(state)); } catch (err) { /* ohne Speicher weiter */ }
+  }
+  function load() {
+    try { return JSON.parse(localStorage.getItem('taupunktrechner')) || {}; } catch (err) { return {}; }
+  }
+
+  /* ---------- Diagramm ---------- */
+  const X0 = -10, X1 = 38, YMAX = 58;            // Temperatur in °C, Dampfdruck in hPa
+  const pad = { l: 14, r: 14, t: 14, b: 28 };
+  const pane = $('pane'), chart = $('chart');
+  let W = 0, H = 0, base = 0;
+  const sx = t => pad.l + (t - X0) / (X1 - X0) * (W - pad.l - pad.r);
+  const sy = e => base - e / YMAX * (base - pad.t);
+  const n = v => v.toFixed(1);
+
+  function drawStatic() {
+    const perDeg = (W - pad.l - pad.r) / (X1 - X0);
+    const tLeft = X0 - pad.l / perDeg, tRight = X1 + pad.r / perDeg;
+    let s = '';
+    for (let t = -10; t <= 35; t += 5) {
+      s += `<line class="grid${t % 10 === 0 ? ' major' : ''}" x1="${n(sx(t))}" y1="0" x2="${n(sx(t))}" y2="${n(base)}"/>`;
+    }
+    const sat = [], c80 = [];
+    for (let t = tLeft; t <= tRight + 0.01; t += 0.5) {
+      sat.push(`${n(sx(t))} ${n(sy(es(t)))}`);
+      c80.push(`${n(sx(t))} ${n(sy(0.8 * es(t)))}`);
+    }
+    const satD = 'M' + sat.join('L'), c80D = 'M' + c80.join('L');
+    const fogD = `${satD}L${W} -80L0 -80Z`;
+    $('fog-clip-path').setAttribute('d', fogD);
+    s += `<path class="fog" d="${fogD}"/>`;
+    s += `<path class="drops" d="${satD}" clip-path="url(#fog-clip)"/>`;
+    s += `<path class="c80" d="${c80D}"/>`;
+    s += `<path class="sat" d="${satD}"/>`;
+    s += `<line class="axis" x1="0" y1="${n(base)}" x2="${W}" y2="${n(base)}"/>`;
+    for (let t = -10; t <= 30; t += 10) {
+      s += `<text class="tick" x="${n(sx(t))}" y="${H - 9}" text-anchor="middle">${de(t, nf0)}</text>`;
+    }
+    s += `<text class="tick" x="${W - pad.r}" y="${H - 9}" text-anchor="end">°C</text>`;
+    s += `<text class="on-pane sat-label" x="${n(sx(32.5) - 9)}" y="${n(sy(es(32.5)) + 4)}" text-anchor="end">100 %</text>`;
+    s += `<text class="on-pane c80-label" x="${n(sx(33) + 8)}" y="${n(sy(0.8 * es(33)) + 4)}">80 %</text>`;
+    $('static').innerHTML = s;
+  }
+
+  function setLine(el, x, y1, y2, show) {
+    el.style.display = show ? '' : 'none';
+    if (!show) return;
+    el.setAttribute('x1', n(x)); el.setAttribute('x2', n(x));
+    el.setAttribute('y1', n(y1)); el.setAttribute('y2', n(y2));
+  }
+  function setDot(el, x, y, show) {
+    el.style.display = show ? '' : 'none';
+    if (!show) return;
+    el.setAttribute('cx', n(x)); el.setAttribute('cy', n(y));
+  }
+
+  function drawLive(r) {
+    const y = sy(r.e), xT = sx(state.t), xD = sx(r.dew), x80 = sx(r.t80);
+    const dewOnChart = xD > 0;
+    const show80 = r.t80 < state.t - 0.05 && x80 > 0;
+
+    $('track').setAttribute('d', `M${n(xT)} ${n(y)}L${n(Math.max(xD, -8))} ${n(y)}`);
+    setLine($('drop-room'), xT, y, base, true);
+    setLine($('drop-dew'), xD, y, base + 6, dewOnChart);
+    setLine($('drop-80'), x80, y, base + 6, show80);
+    setDot($('mark-80'), x80, y, show80);
+    setDot($('dot-dew'), xD, y, dewOnChart);
+    setDot($('dot-room'), xT, y, true);
+
+    const label = $('label-room');
+    const fitsRight = xT + 9 + 58 <= W - 6;
+    label.setAttribute('x', n(fitsRight ? xT + 9 : xT - 9));
+    label.setAttribute('y', n(Math.max(y - 9, 14)));
+    label.setAttribute('text-anchor', fitsRight ? 'start' : 'end');
+
+    chart.setAttribute('aria-label',
+      `Diagramm: Raumluft bei ${de(state.t)} °C und ${de(state.rh, nf0)} %, 80 % bei ${de(r.t80)} °C, Taupunkt bei ${de(r.dew)} °C.`);
+  }
+
+  function measure() {
+    const box = pane.getBoundingClientRect();
+    if (!box.width || !box.height) return false;
+    W = box.width; H = box.height; base = H - pad.b;
+    chart.setAttribute('viewBox', `0 0 ${n(W)} ${n(H)}`);
+    return true;
+  }
+
+  /* ---------- Ausgabe ---------- */
+  let spokenTimer = 0;
+  function render() {
+    const r = compute(state.t, state.rh);
+
+    const [int, dec] = de(r.dew).split(',');
+    $('dew-int').textContent = int;
+    $('dew-dec').textContent = ',' + dec;
+    $('t80').textContent = de(r.t80);
+    $('gap').textContent = de(state.t - r.dew);
+    $('abs').textContent = de(r.abs);
+
+    const pill = $('climate');
+    const [text, mood] =
+      state.rh < 40  ? ['trocken', 'dry'] :
+      state.rh <= 60 ? ['im Wohlfühlbereich', 'ok'] :
+      state.rh <= 70 ? ['feucht, öfter lüften', 'damp'] :
+                       ['sehr feucht, Schimmelgefahr', 'wet'];
+    pill.textContent = text;
+    pill.dataset.state = mood;
+
+    for (const key of ['t', 'rh']) {
+      const c = ui[key], lim = LIMITS[key];
+      if (document.activeElement !== c.field) c.field.value = fmtInput(key);
+      c.range.value = state[key];
+      c.range.style.setProperty('--f', (state[key] - lim.min) / (lim.max - lim.min));
+      c.range.setAttribute('aria-valuetext', `${fmtInput(key)} ${c.unit}`);
+    }
+
+    if (W) drawLive(r);
+
+    clearTimeout(spokenTimer);
+    spokenTimer = setTimeout(() => {
+      $('spoken').textContent = `Taupunkt ${de(r.dew)} Grad Celsius. 80 Prozent Luftfeuchte bei ${de(r.t80)} Grad Celsius.`;
+    }, 700);
+  }
+
+  function set(key, value) {
+    const v = round(clamp(value, key), key);
+    if (v === state[key]) { render(); return; }
+    state[key] = v;
+    render();
+    save();
+  }
+
+  /* ---------- Bedienung ---------- */
+  function showHint(c, text) { c.hint.textContent = text; c.hint.hidden = false; }
+  function hideHint(c) { c.hint.hidden = true; c.hint.textContent = ''; }
+
+  function wire(key) {
+    const c = ui[key], lim = LIMITS[key];
+    const span = `${de(lim.min, nf0)} bis ${de(lim.max, nf0)} ${c.unit}`;
+
+    c.range.addEventListener('input', () => { hideHint(c); set(key, parseFloat(c.range.value)); });
+
+    c.field.addEventListener('focus', () => c.field.select());
+    c.field.addEventListener('input', () => {
+      const v = parse(c.field.value);
+      if (v !== null && v >= lim.min && v <= lim.max) { hideHint(c); set(key, v); }
+    });
+    c.field.addEventListener('keydown', ev => { if (ev.key === 'Enter') c.field.blur(); });
+    c.field.addEventListener('blur', () => {
+      const v = parse(c.field.value);
+      if (v === null) {
+        showHint(c, `Das ist keine Zahl. Bitte einen Wert von ${span} eingeben.`);
+      } else if (v < lim.min || v > lim.max) {
+        showHint(c, `Der Rechner reicht von ${span}. Der Wert wurde angepasst.`);
+        set(key, v);
+      } else {
+        hideHint(c);
+        set(key, v);
+      }
+      c.field.value = fmtInput(key);
+    });
+
+    const nudge = dir => { hideHint(c); set(key, state[key] + dir * c.step); };
+    for (const [btn, dir] of [[c.minus, -1], [c.plus, 1]]) {
+      let wait = 0, repeat = 0;
+      const stop = () => { clearTimeout(wait); clearInterval(repeat); };
+      btn.addEventListener('pointerdown', ev => {
+        if (ev.button) return;
+        stop();
+        nudge(dir);
+        wait = setTimeout(() => { repeat = setInterval(() => nudge(dir), 70); }, 420);
+      });
+      for (const type of ['pointerup', 'pointerleave', 'pointercancel', 'blur']) btn.addEventListener(type, stop);
+      btn.addEventListener('click', ev => { if (ev.detail === 0) nudge(dir); });   // Tastatur
+      btn.addEventListener('contextmenu', ev => ev.preventDefault());
+    }
+  }
+
+  /* ---------- Start ---------- */
+  function start(saved) {
+    const init = Object.assign({}, load(), saved);
+    for (const key of ['t', 'rh']) {
+      if (typeof init[key] === 'number' && isFinite(init[key])) state[key] = round(clamp(init[key], key), key);
+    }
+    wire('t');
+    wire('rh');
+
+    if (measure()) drawStatic();
+    render();
+
+    new ResizeObserver(() => {
+      if (measure()) { drawStatic(); drawLive(compute(state.t, state.rh)); }
+    }).observe(pane);
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => { if (W) drawLive(compute(state.t, state.rh)); });
+    }
+    setTimeout(() => pane.classList.remove('intro'), 1500);
+  }
+
+  start({});
+})();
+</script>
+<script>
+(() => {
+  'use strict';
+  // Hält die App nach dem ersten Öffnen offline bereit.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+  }
+  // Chrome meldet, wenn die App installiert werden kann. Erst dann erscheint der Knopf.
+  const bar = document.getElementById('install'), button = document.getElementById('install-button');
+  let offer = null;
+  window.addEventListener('beforeinstallprompt', ev => { ev.preventDefault(); offer = ev; bar.hidden = false; });
+  window.addEventListener('appinstalled', () => { offer = null; bar.hidden = true; });
+  button.addEventListener('click', async () => {
+    if (!offer) return;
+    offer.prompt();
+    try { await offer.userChoice; } catch (err) { /* Dialog geschlossen */ }
+    offer = null;
+    bar.hidden = true;
+  });
+})();
+</script>
+</body>
+</html>

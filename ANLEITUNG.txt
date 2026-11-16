@@ -1,0 +1,83 @@
+TAUPUNKTRECHNER ALS APP INSTALLIEREN
+====================================
+
+Android installiert eine Web-App nur von einer Adresse, die mit https
+beginnt. Die fünf Dateien aus diesem Ordner müssen deshalb einmal im
+Internet liegen. Nach der Installation läuft die App ohne Internet.
+
+Die fünf Dateien:
+  index.html      der Rechner
+  sw.js           legt alles auf dem Handy ab, damit die App offline läuft
+  manifest.json   Name, Farben und Symbol der App
+  icon-192.png    App-Symbol
+  icon-512.png    App-Symbol, groß
+
+Diese Anleitung selbst muss nicht mit hochgeladen werden.
+
+
+WEG A: KOSTENLOS ÜBER GITHUB PAGES
+----------------------------------
+Dafür brauchst du ein Konto bei github.com. Die Seite ist englisch.
+
+1. Auf github.com anmelden. Oben rechts auf das Plus tippen und
+   "New repository" wählen.
+2. Bei "Repository name" einen Namen eintragen, zum Beispiel: taupunkt
+   Die Sichtbarkeit auf "Public" lassen. Dann "Create repository".
+3. Auf der neuen Seite den Link "uploading an existing file" wählen.
+   Die fünf Dateien hochladen, nicht den ganzen Ordner.
+   Unten auf "Commit changes" tippen.
+4. Oben "Settings" öffnen, dann links "Pages".
+   Unter "Build and deployment" bei "Source" den Eintrag
+   "Deploy from a branch" wählen. Bei "Branch" auf "main" stellen,
+   daneben "/ (root)" lassen, dann "Save".
+5. Ein bis zwei Minuten warten. Die App liegt jetzt unter
+   https://DEIN-BENUTZERNAME.github.io/taupunkt/
+
+Die Adresse ist öffentlich erreichbar. Sie enthält nur den Rechner,
+keine persönlichen Daten.
+
+
+WEG B: EIGENER WEBSPACE
+-----------------------
+Die fünf Dateien zusammen in einen eigenen Ordner laden. Die Adresse
+muss mit https beginnen.
+
+Ein Server im Heimnetz, der nur über http erreichbar ist (zum Beispiel
+Home Assistant unter einer 192.168er-Adresse), reicht nicht. Chrome
+bietet die Installation dort nicht an.
+
+
+INSTALLIEREN AUF DEM HANDY
+--------------------------
+1. Die Adresse am Handy in Chrome öffnen.
+2. Oben auf der Seite auf "App installieren" tippen.
+   Fehlt der Knopf: in Chrome das Menü mit den drei Punkten öffnen,
+   "Zum Startbildschirm hinzufügen" wählen, dann "Installieren".
+3. Die App einmal vom Startbildschirm aus öffnen, solange das Handy
+   noch online ist. Ab dann läuft sie ohne Internet.
+
+
+GUT ZU WISSEN
+-------------
+- Die App merkt sich die zuletzt eingegebenen Werte. Sie liegen nur
+  auf dem Handy.
+- Eine neue Fassung spielst du ein, indem du alle fünf Dateien am
+  selben Ort ersetzt. Die App holt sie sich, sobald sie das nächste Mal
+  mit Internet geöffnet wird, und zeigt sie beim Start danach.
+  Das gilt auch, wenn die erste Fassung vom 16.11. schon online ist.
+
+
+SICHERHEIT (Fassung 2)
+----------------------
+- Die App ruft keine fremden Server auf. Sie lädt nur ihre eigenen
+  Dateien und nutzt die Schrift des Handys.
+- Sie hat keinen Login, sammelt keine Daten und verlangt keine
+  Berechtigungen. Gespeichert werden nur die zwei zuletzt eingegebenen
+  Zahlen, und zwar auf dem Handy.
+- Eine Inhaltsrichtlinie (Content Security Policy) in index.html
+  erlaubt dem Browser nur genau den mitgelieferten Code. Wer index.html
+  von Hand ändert, muss die Prüfsummen darin neu berechnen, sonst
+  bleibt die App leer.
+- Die wichtigste Vorkehrung liegt bei dir: Wer dein Konto beim
+  Webspace übernimmt, kann die Dateien austauschen. Nutze dort ein
+  eigenes, starkes Passwort und die Zwei-Faktor-Anmeldung.
